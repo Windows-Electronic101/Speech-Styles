@@ -1,0 +1,23 @@
+{
+  "active_style": "windows_10_narrator",
+  "elements": {
+    "foreground_window": {
+      "enabled": true,
+      "label": "Foreground Window",
+      "pause": "comma",
+      "position": "before"
+    },
+    "push_button": {
+      "enabled": true,
+      "label": "Push button",
+      "pause": "comma",
+      "position": "before"
+    },
+    "edit": {
+      "enabled": true,
+      "label": "Edit box",
+      "pause": "none",
+      "position": "none"
+    }
+  }
+}
