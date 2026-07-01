@@ -1,0 +1,31 @@
+<h1 id="speech-styles">Speech Styles</h1>
+<p>This repository now contains a functional NVDA add-on scaffold for
+Speech Styles, targeting NVDA 2025.4.x and later-compatible add-on
+packaging conventions.</p>
+<h2 id="features">Features</h2>
+<ul>
+<li>Switch between built-in speech styles such as Windows 10 Narrator,
+Windows XP, Windows 7 Narrator, and JAWS.</li>
+<li>Customize each UI element announcement with a dedicated settings
+panel in NVDA.</li>
+<li>Use checkboxes to enable or disable per-element rules; when
+disabled, NVDA falls back to its default announcement.</li>
+<li>Choose a pause style for each element: none, comma, or period.</li>
+<li>Choose where the UI type is announced: before, after, or not at
+all.</li>
+</ul>
+<h2 id="structure">Structure</h2>
+<ul>
+<li>addon/globalPlugins/speechStyles/config.py: persistent JSON
+configuration and defaults</li>
+<li>addon/globalPlugins/speechStyles/style_engine.py: style
+transformation logic</li>
+<li>addon/globalPlugins/speechStyles/settings.py: settings panel UI for
+NVDA</li>
+<li>addon/globalPlugins/speechStyles/addon.py: addon entry point and
+registration</li>
+<li>manifest.ini: add-on metadata for recent NVDA versions</li>
+</ul>
+<h2 id="verification">Verification</h2>
+<p>Run the regression tests with:</p>
+<p>python -m pytest -q</p>

@@ -62,10 +62,25 @@ STYLE_PRESETS: Dict[str, Dict[str, Dict[str, Any]]] = {
     },
 }
 
+STYLE_DISPLAY_NAMES = {
+    "windows_10_narrator": "Windows 10 Narrator",
+    "windows_xp": "Windows XP",
+    "windows_7_narrator": "Windows 7 Narrator",
+    "jaws": "JAWS",
+}
+
 
 class StyleEngine:
     def __init__(self, style_name: str = "windows_10_narrator"):
         self.style_name = style_name
+
+    @staticmethod
+    def available_styles() -> list[str]:
+        return list(STYLE_PRESETS)
+
+    @staticmethod
+    def display_name(style_name: str) -> str:
+        return STYLE_DISPLAY_NAMES.get(style_name, style_name.replace("_", " ").title())
 
     def transform(self, original: str, element_name: str, config: Optional[Dict[str, Any]] = None) -> str:
         if not original:
