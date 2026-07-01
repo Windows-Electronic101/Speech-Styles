@@ -12,7 +12,7 @@ if addonHandler is not None:
 
 from .config import DEFAULT_CONFIG, get_config_path, load_config
 from .settings import SpeechStylesSettingsPanel
-from .style_engine import StyleEngine
+from .style_engine import StyleEngine, transform_speech_sequence_for_element
 
 
 if globalPluginHandler is not None:
@@ -24,19 +24,24 @@ if globalPluginHandler is not None:
             self._config_mtime = None
             self._config = load_config(self._config_path)
             self._style_engine = StyleEngine(self._config.get("active_style", DEFAULT_CONFIG["active_style"]))
+            self._focus_speech_context = None
             self._register_settings_panel()
+            self._register_speech_filter()
 
         def event_foreground(self, obj, nextHandler):
             nextHandler()
             self._speak_styled_object(obj, "foreground_window")
 
         def event_gainFocus(self, obj, nextHandler):
-            nextHandler()
             element_name = self._element_name_for_object(obj)
-            if element_name:
-                self._speak_styled_object(obj, element_name)
+            self._focus_speech_context = self._build_focus_speech_context(obj, element_name)
+            try:
+                nextHandler()
+            finally:
+                self._focus_speech_context = None
 
         def terminate(self):
+            self._unregister_speech_filter()
             self._unregister_settings_panel()
             super().terminate()
 
@@ -59,6 +64,37 @@ if globalPluginHandler is not None:
                     categories.remove(SpeechStylesSettingsPanel)
             except Exception:
                 pass
+
+        def _register_speech_filter(self):
+            try:
+                from speech.extensions import filter_speechSequence
+
+                filter_speechSequence.register(self._filter_speech_sequence)
+            except Exception:
+                pass
+
+        def _unregister_speech_filter(self):
+            try:
+                from speech.extensions import filter_speechSequence
+
+                filter_speechSequence.unregister(self._filter_speech_sequence)
+            except Exception:
+                pass
+
+        def _filter_speech_sequence(self, speechSequence):
+            context = self._focus_speech_context
+            if not context:
+                return speechSequence
+            self._reload_config_if_needed()
+            return transform_speech_sequence_for_element(
+                speechSequence,
+                original=context["name"],
+                element_name=context["element_name"],
+                style_name=self._config.get("active_style", DEFAULT_CONFIG["active_style"]),
+                config=self._config,
+                role_labels=context["role_labels"],
+                keyboard_shortcut=context["keyboard_shortcut"],
+            )
 
         def _reload_config_if_needed(self):
             try:
@@ -92,6 +128,35 @@ if globalPluginHandler is not None:
             except Exception:
                 return None
 
+        def _build_focus_speech_context(self, obj, element_name):
+            if element_name != "push_button":
+                return None
+            name = self._object_name_without_shortcut(obj)
+            if not name:
+                return None
+            return {
+                "element_name": element_name,
+                "name": name,
+                "keyboard_shortcut": self._object_keyboard_shortcut(obj),
+                "role_labels": self._role_labels_for_object(obj),
+            }
+
+        def _role_labels_for_object(self, obj):
+            labels = {"button", "push button"}
+            try:
+                role_text = getattr(obj, "roleText", "")
+                if role_text:
+                    labels.add(role_text)
+            except Exception:
+                pass
+            try:
+                role_display = getattr(obj.role, "displayString", "")
+                if role_display:
+                    labels.add(role_display)
+            except Exception:
+                pass
+            return tuple(labels)
+
         def _speak_styled_object(self, obj, element_name):
             original = self._object_name(obj)
             if not original:
@@ -100,19 +165,39 @@ if globalPluginHandler is not None:
             styled = self.transform(original, element_name)
             if styled == original:
                 return
-            try:
-                import speech
-
-                speech.cancelSpeech()
-            except Exception:
-                pass
             self._announce(styled)
 
         def _object_name(self, obj):
             try:
+                parts = [self._object_name_without_shortcut(obj)]
+                keyboard_shortcut = self._object_keyboard_shortcut(obj)
+                if keyboard_shortcut and self._should_report_keyboard_shortcuts():
+                    parts.append(keyboard_shortcut)
+                return " ".join(part for part in parts if part)
+            except Exception:
+                return ""
+
+        def _object_name_without_shortcut(self, obj):
+            try:
                 return (obj.name or "").strip()
             except Exception:
                 return ""
+
+        def _object_keyboard_shortcut(self, obj):
+            if not self._should_report_keyboard_shortcuts():
+                return ""
+            try:
+                return (obj.keyboardShortcut or "").strip()
+            except Exception:
+                return ""
+
+        def _should_report_keyboard_shortcuts(self):
+            try:
+                import config
+
+                return bool(config.conf["presentation"]["reportKeyboardShortcuts"])
+            except Exception:
+                return True
 
         def _announce(self, text):
             try:

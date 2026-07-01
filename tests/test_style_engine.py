@@ -2,7 +2,11 @@ import json
 import tempfile
 from pathlib import Path
 
-from addon.globalPlugins.speechStyles.style_engine import StyleEngine, build_phrase
+from addon.globalPlugins.speechStyles.style_engine import (
+    StyleEngine,
+    build_phrase,
+    transform_speech_sequence_for_element,
+)
 from addon.globalPlugins.speechStyles.config import load_config, save_config, DEFAULT_CONFIG
 
 
@@ -53,3 +57,31 @@ def test_build_phrase_supports_after_position_and_period_pause():
         },
     )
     assert phrase == "Edit box. Edit box"
+
+
+def test_focus_speech_sequence_rewrites_button_without_dropping_shortcut():
+    sequence = ["Do you want to continue?", "Yes", "Alt+Y", "button"]
+    rewritten = transform_speech_sequence_for_element(
+        sequence,
+        original="Yes",
+        element_name="push_button",
+        style_name="windows_xp",
+        config=DEFAULT_CONFIG,
+        role_labels=("button", "push button"),
+        keyboard_shortcut="Alt+Y",
+    )
+    assert rewritten == ["Do you want to continue?", "Yes Button Alt+Y"]
+
+
+def test_focus_speech_sequence_uses_before_style_without_duplicate_role():
+    sequence = ["Do you want to continue?", "Yes", "Alt+Y", "button"]
+    rewritten = transform_speech_sequence_for_element(
+        sequence,
+        original="Yes",
+        element_name="push_button",
+        style_name="windows_7_narrator",
+        config=DEFAULT_CONFIG,
+        role_labels=("button", "push button"),
+        keyboard_shortcut="Alt+Y",
+    )
+    assert rewritten == ["Do you want to continue?", "Push button, Yes Alt+Y"]

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence
 
 STYLE_PRESETS: Dict[str, Dict[str, Dict[str, Any]]] = {
     "windows_10_narrator": {
@@ -142,3 +142,71 @@ class StyleEngine:
 def build_phrase(original: str, element_name: str, style_name: str, config: Dict[str, Any]) -> str:
     engine = StyleEngine(style_name)
     return engine.transform(original, element_name, config)
+
+
+def transform_speech_sequence_for_element(
+    speech_sequence: Sequence[Any],
+    original: str,
+    element_name: str,
+    style_name: str,
+    config: Dict[str, Any],
+    role_labels: Sequence[str],
+    keyboard_shortcut: str = "",
+) -> list[Any]:
+    if not original or not role_labels:
+        return list(speech_sequence)
+
+    name_index = _find_string_index(speech_sequence, original)
+    if name_index is None:
+        return list(speech_sequence)
+
+    role_index = _find_string_index(
+        speech_sequence,
+        role_labels,
+        start=name_index + 1,
+        stop=name_index + 8,
+    )
+    if role_index is None:
+        return list(speech_sequence)
+
+    shortcut_index = None
+    if keyboard_shortcut:
+        shortcut_index = _find_string_index(
+            speech_sequence,
+            keyboard_shortcut,
+            start=name_index + 1,
+            stop=role_index + 1,
+        )
+
+    replacement = build_phrase(original, element_name, style_name, config)
+    if keyboard_shortcut and keyboard_shortcut.lower() not in replacement.lower():
+        replacement = f"{replacement} {keyboard_shortcut}"
+
+    remove_end = max(index for index in (role_index, shortcut_index) if index is not None)
+    return [
+        *speech_sequence[:name_index],
+        replacement,
+        *speech_sequence[remove_end + 1 :],
+    ]
+
+
+def _find_string_index(
+    sequence: Sequence[Any],
+    targets: str | Sequence[str],
+    start: int = 0,
+    stop: Optional[int] = None,
+) -> Optional[int]:
+    if isinstance(targets, str):
+        normalized_targets = {_normalize_speech_text(targets)}
+    else:
+        normalized_targets = {_normalize_speech_text(target) for target in targets if target}
+    stop = len(sequence) if stop is None else min(stop, len(sequence))
+    for index in range(start, stop):
+        item = sequence[index]
+        if isinstance(item, str) and _normalize_speech_text(item) in normalized_targets:
+            return index
+    return None
+
+
+def _normalize_speech_text(text: str) -> str:
+    return " ".join(text.split()).lower()
