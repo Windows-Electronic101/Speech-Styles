@@ -15,6 +15,37 @@ from .settings import SpeechStylesSettingsPanel
 from .style_engine import StyleEngine, transform_speech_sequence_for_element
 
 
+def should_style_foreground_object(obj):
+    name = object_name_without_shortcut(obj)
+    if not name:
+        return False
+    if is_transient_shell_switcher(obj, name):
+        return False
+    return True
+
+
+def is_transient_shell_switcher(obj, name):
+    normalized_name = name.casefold()
+    if normalized_name in {"task switching", "task switcher"}:
+        return True
+    try:
+        class_name = (obj.windowClassName or "").casefold()
+    except Exception:
+        class_name = ""
+    return class_name in {
+        "multitaskingviewframe",
+        "xaml_multitaskingviewframe",
+        "windows.ui.core.corewindow",
+    } and "task" in normalized_name
+
+
+def object_name_without_shortcut(obj):
+    try:
+        return (obj.name or "").strip()
+    except Exception:
+        return ""
+
+
 if globalPluginHandler is not None:
 
     class GlobalPlugin(globalPluginHandler.GlobalPlugin):
@@ -30,6 +61,8 @@ if globalPluginHandler is not None:
 
         def event_foreground(self, obj, nextHandler):
             nextHandler()
+            if not self._should_style_foreground_object(obj):
+                return
             self._speak_styled_object(obj, "foreground_window")
 
         def event_gainFocus(self, obj, nextHandler):
@@ -157,6 +190,9 @@ if globalPluginHandler is not None:
                 pass
             return tuple(labels)
 
+        def _should_style_foreground_object(self, obj):
+            return should_style_foreground_object(obj)
+
         def _speak_styled_object(self, obj, element_name):
             original = self._object_name(obj)
             if not original:
@@ -178,10 +214,7 @@ if globalPluginHandler is not None:
                 return ""
 
         def _object_name_without_shortcut(self, obj):
-            try:
-                return (obj.name or "").strip()
-            except Exception:
-                return ""
+            return object_name_without_shortcut(obj)
 
         def _object_keyboard_shortcut(self, obj):
             if not self._should_report_keyboard_shortcuts():
