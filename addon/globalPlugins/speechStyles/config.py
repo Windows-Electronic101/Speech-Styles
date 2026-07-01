@@ -5,34 +5,59 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+CONFIG_FILENAME = "speech_styles.json"
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "active_style": "windows_10_narrator",
-    "elements": {
-        "foreground_window": {
-            "enabled": True,
-            "label": "Foreground Window",
-            "pause": "comma",
-            "position": "before",
-        },
-        "push_button": {
-            "enabled": True,
-            "label": "Push button",
-            "pause": "comma",
-            "position": "before",
-        },
-        "edit": {
-            "enabled": True,
-            "label": "Edit box",
-            "pause": "none",
-            "position": "none",
-        },
+    "elements": {},
+}
+
+LEGACY_DEFAULT_ELEMENTS: Dict[str, Dict[str, Any]] = {
+    "foreground_window": {
+        "enabled": True,
+        "label": "Foreground Window",
+        "pause": "comma",
+        "position": "before",
+    },
+    "push_button": {
+        "enabled": True,
+        "label": "Push button",
+        "pause": "comma",
+        "position": "before",
+    },
+    "edit": {
+        "enabled": True,
+        "label": "Edit box",
+        "pause": "none",
+        "position": "none",
     },
 }
 
 
+def get_config_path() -> Path:
+    try:
+        import globalVars
+
+        config_path = getattr(globalVars.appArgs, "configPath", None)
+        if config_path:
+            return Path(config_path) / CONFIG_FILENAME
+    except Exception:
+        pass
+    return Path(__file__).resolve().parent / CONFIG_FILENAME
+
+
+def should_write_config() -> bool:
+    try:
+        import NVDAState
+
+        return bool(NVDAState.shouldWriteToDisk())
+    except Exception:
+        return True
+
+
 def load_config(path: Optional[Path] = None) -> Dict[str, Any]:
     if path is None:
-        path = Path(__file__).resolve().parent / "speech_styles.json"
+        path = get_config_path()
     if not path.exists():
         return deepcopy(DEFAULT_CONFIG)
 
@@ -42,6 +67,9 @@ def load_config(path: Optional[Path] = None) -> Dict[str, Any]:
     merged = deepcopy(DEFAULT_CONFIG)
     if isinstance(raw, dict):
         merged.update(raw)
+        if raw.get("elements") == LEGACY_DEFAULT_ELEMENTS:
+            merged["elements"] = {}
+            return merged
         for element_id, element_config in raw.get("elements", {}).items():
             if not isinstance(element_config, dict):
                 continue
@@ -53,7 +81,9 @@ def load_config(path: Optional[Path] = None) -> Dict[str, Any]:
 
 def save_config(config: Dict[str, Any], path: Optional[Path] = None) -> Path:
     if path is None:
-        path = Path(__file__).resolve().parent / "speech_styles.json"
+        path = get_config_path()
+    if not should_write_config():
+        return path
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         json.dump(config, handle, indent=2, ensure_ascii=False)
