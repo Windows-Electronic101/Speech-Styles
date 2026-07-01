@@ -169,24 +169,13 @@ def transform_speech_sequence_for_element(
     if role_index is None:
         return list(speech_sequence)
 
-    shortcut_index = None
-    if keyboard_shortcut:
-        shortcut_index = _find_string_index(
-            speech_sequence,
-            keyboard_shortcut,
-            start=name_index + 1,
-            stop=role_index + 1,
-        )
-
     replacement = build_phrase(original, element_name, style_name, config)
-    if keyboard_shortcut and keyboard_shortcut.lower() not in replacement.lower():
-        replacement = f"{replacement} {keyboard_shortcut}"
 
-    remove_end = max(index for index in (role_index, shortcut_index) if index is not None)
+    remove_indexes = {name_index, role_index}
     return [
-        *speech_sequence[:name_index],
+        *(item for index, item in enumerate(speech_sequence[:name_index]) if index not in remove_indexes),
         replacement,
-        *speech_sequence[remove_end + 1 :],
+        *(item for index, item in enumerate(speech_sequence[name_index + 1 :], start=name_index + 1) if index not in remove_indexes),
     ]
 
 

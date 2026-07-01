@@ -70,7 +70,35 @@ def test_focus_speech_sequence_rewrites_button_without_dropping_shortcut():
         role_labels=("button", "push button"),
         keyboard_shortcut="Alt+Y",
     )
-    assert rewritten == ["Do you want to continue?", "Yes Button Alt+Y"]
+    assert rewritten == ["Do you want to continue?", "Yes Button", "Alt+Y"]
+
+
+def test_focus_speech_sequence_does_not_duplicate_shortcut_after_role():
+    sequence = ["Do you want to continue?", "Yes", "button", "Alt+Y"]
+    rewritten = transform_speech_sequence_for_element(
+        sequence,
+        original="Yes",
+        element_name="push_button",
+        style_name="windows_xp",
+        config=DEFAULT_CONFIG,
+        role_labels=("button", "push button"),
+        keyboard_shortcut="Alt+Y",
+    )
+    assert rewritten == ["Do you want to continue?", "Yes Button", "Alt+Y"]
+
+
+def test_focus_speech_sequence_preserves_expanded_shortcut_once():
+    sequence = ["Do you want to continue?", "Yes", "Alt", "+", "Y", "button"]
+    rewritten = transform_speech_sequence_for_element(
+        sequence,
+        original="Yes",
+        element_name="push_button",
+        style_name="windows_xp",
+        config=DEFAULT_CONFIG,
+        role_labels=("button", "push button"),
+        keyboard_shortcut="Alt+Y",
+    )
+    assert rewritten == ["Do you want to continue?", "Yes Button", "Alt", "+", "Y"]
 
 
 def test_focus_speech_sequence_uses_before_style_without_duplicate_role():
@@ -84,4 +112,4 @@ def test_focus_speech_sequence_uses_before_style_without_duplicate_role():
         role_labels=("button", "push button"),
         keyboard_shortcut="Alt+Y",
     )
-    assert rewritten == ["Do you want to continue?", "Push button, Yes Alt+Y"]
+    assert rewritten == ["Do you want to continue?", "Push button, Yes", "Alt+Y"]
