@@ -17,6 +17,12 @@ STYLE_PRESETS: Dict[str, Dict[str, Dict[str, Any]]] = {
             "pause": "none",
             "position": "after",
         },
+        "edit": {
+            "enabled": True,
+            "label": "Edit box",
+            "pause": "none",
+            "position": "none",
+        },
     },
     "windows_xp": {
         "foreground_window": {
@@ -27,9 +33,15 @@ STYLE_PRESETS: Dict[str, Dict[str, Dict[str, Any]]] = {
         },
         "push_button": {
             "enabled": True,
-            "label": "Push button",
-            "pause": "comma",
-            "position": "before",
+            "label": "Button",
+            "pause": "none",
+            "position": "after",
+        },
+        "edit": {
+            "enabled": True,
+            "label": "Edit box",
+            "pause": "none",
+            "position": "none",
         },
     },
     "windows_7_narrator": {
@@ -45,6 +57,12 @@ STYLE_PRESETS: Dict[str, Dict[str, Dict[str, Any]]] = {
             "pause": "comma",
             "position": "before",
         },
+        "edit": {
+            "enabled": True,
+            "label": "Edit box",
+            "pause": "none",
+            "position": "none",
+        },
     },
     "jaws": {
         "foreground_window": {
@@ -58,6 +76,12 @@ STYLE_PRESETS: Dict[str, Dict[str, Dict[str, Any]]] = {
             "label": "Button",
             "pause": "comma",
             "position": "before",
+        },
+        "edit": {
+            "enabled": True,
+            "label": "Edit box",
+            "pause": "none",
+            "position": "none",
         },
     },
 }
@@ -82,15 +106,20 @@ class StyleEngine:
     def display_name(style_name: str) -> str:
         return STYLE_DISPLAY_NAMES.get(style_name, style_name.replace("_", " ").title())
 
+    @staticmethod
+    def elements_for_style(style_name: str, config: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
+        style_config = deepcopy(STYLE_PRESETS.get(style_name, STYLE_PRESETS["windows_10_narrator"]))
+        if config:
+            for element_name, element_style in config.get("elements", {}).items():
+                if isinstance(element_style, dict):
+                    style_config[element_name] = {**style_config.get(element_name, {}), **element_style}
+        return style_config
+
     def transform(self, original: str, element_name: str, config: Optional[Dict[str, Any]] = None) -> str:
         if not original:
             return original
 
-        style_config = deepcopy(STYLE_PRESETS.get(self.style_name, STYLE_PRESETS["windows_10_narrator"]))
-        if config:
-            element_style = config.get("elements", {}).get(element_name, {})
-            if element_style:
-                style_config[element_name] = {**style_config.get(element_name, {}), **element_style}
+        style_config = self.elements_for_style(self.style_name, config)
 
         element_config = style_config.get(element_name, {})
         if not element_config.get("enabled", True):

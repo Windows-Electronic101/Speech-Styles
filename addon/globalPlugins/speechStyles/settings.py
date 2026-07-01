@@ -51,11 +51,13 @@ class SpeechStylesSettingsPanel(NVDASettingsPanel):
         except ValueError:
             style_choice.SetSelection(0)
         self._controls["active_style"] = style_choice
+        style_choice.Bind(wx.EVT_CHOICE, self._on_style_changed)
 
         sizer.Add(style_label, 0, wx.LEFT | wx.RIGHT | wx.TOP, 10)
         sizer.Add(style_choice, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 10)
 
-        for element_id, element_config in self.config.get("elements", {}).items():
+        active_style = self._selected_style_name()
+        for element_id, element_config in StyleEngine.elements_for_style(active_style, self.config).items():
             row = wx.BoxSizer(wx.HORIZONTAL)
             checkbox = wx.CheckBox(self, label=element_config.get("label", element_id.replace("_", " ")))
             checkbox.SetValue(bool(element_config.get("enabled", True)))
@@ -85,13 +87,41 @@ class SpeechStylesSettingsPanel(NVDASettingsPanel):
         self._save()
 
     def _save(self):
+        active_style = self._selected_style_name()
+        self.config["active_style"] = active_style
+
+        base_elements = StyleEngine.elements_for_style(active_style)
+        custom_elements = {}
+        for element_id, base_config in base_elements.items():
+            element_config = {
+                "enabled": bool(self._controls[(element_id, "enabled")].GetValue()),
+                "label": self._controls[(element_id, "enabled")].GetLabel(),
+                "pause": self._controls[(element_id, "pause")].GetStringSelection(),
+                "position": self._controls[(element_id, "position")].GetStringSelection(),
+            }
+            custom_config = {
+                key: value
+                for key, value in element_config.items()
+                if value != base_config.get(key)
+            }
+            if custom_config:
+                custom_elements[element_id] = custom_config
+        self.config["elements"] = custom_elements
+        save_config(self.config, self.config_path)
+
+    def _selected_style_name(self):
         selection = self._controls["active_style"].GetSelection()
         if selection < 0:
             selection = 0
-        self.config["active_style"] = self._style_names[selection]
+        return self._style_names[selection]
 
-        for element_id, element_config in self.config.get("elements", {}).items():
-            element_config["enabled"] = bool(self._controls[(element_id, "enabled")].GetValue())
-            element_config["pause"] = self._controls[(element_id, "pause")].GetStringSelection()
-            element_config["position"] = self._controls[(element_id, "position")].GetStringSelection()
-        save_config(self.config, self.config_path)
+    def _on_style_changed(self, event):
+        element_configs = StyleEngine.elements_for_style(self._selected_style_name(), self.config)
+        for element_id, element_config in element_configs.items():
+            self._controls[(element_id, "enabled")].SetLabel(
+                element_config.get("label", element_id.replace("_", " ")),
+            )
+            self._controls[(element_id, "enabled")].SetValue(bool(element_config.get("enabled", True)))
+            self._controls[(element_id, "pause")].SetStringSelection(element_config.get("pause", "none"))
+            self._controls[(element_id, "position")].SetStringSelection(element_config.get("position", "none"))
+        event.Skip()

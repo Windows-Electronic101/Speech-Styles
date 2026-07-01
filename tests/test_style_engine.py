@@ -6,16 +6,16 @@ from addon.globalPlugins.speechStyles.style_engine import StyleEngine, build_phr
 from addon.globalPlugins.speechStyles.config import load_config, save_config, DEFAULT_CONFIG
 
 
-def test_windows_xp_example_uses_foreground_window_prefix_and_comma_pause():
+def test_windows_xp_foreground_window_uses_role_before_title():
     engine = StyleEngine("windows_xp")
     phrase = engine.transform("Untitled - Notepad", "foreground_window")
     assert phrase == "Foreground Window, Untitled - Notepad"
 
 
-def test_push_button_uses_comma_pause_before_control():
+def test_windows_xp_push_button_uses_label_before_role():
     engine = StyleEngine("windows_xp")
     phrase = engine.transform("OK", "push_button")
-    assert phrase == "Push button, OK"
+    assert phrase == "OK Button"
 
 
 def test_config_round_trip_preserves_enabled_flags():
@@ -23,11 +23,17 @@ def test_config_round_trip_preserves_enabled_flags():
         path = Path(tmpdir) / "speech_styles.json"
         cfg = DEFAULT_CONFIG.copy()
         cfg["active_style"] = "windows_10_narrator"
-        cfg["elements"]["foreground_window"]["enabled"] = False
+        cfg["elements"] = {"foreground_window": {"enabled": False}}
         save_config(cfg, path)
         loaded = load_config(path)
         assert loaded["active_style"] == "windows_10_narrator"
         assert loaded["elements"]["foreground_window"]["enabled"] is False
+
+
+def test_default_config_does_not_override_selected_preset():
+    engine = StyleEngine("windows_10_narrator")
+    phrase = engine.transform("Untitled - Notepad", "foreground_window", DEFAULT_CONFIG)
+    assert phrase == "Untitled - Notepad. Foreground Window"
 
 
 def test_build_phrase_supports_after_position_and_period_pause():

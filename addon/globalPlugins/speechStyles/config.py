@@ -9,25 +9,27 @@ CONFIG_FILENAME = "speech_styles.json"
 
 DEFAULT_CONFIG: Dict[str, Any] = {
     "active_style": "windows_10_narrator",
-    "elements": {
-        "foreground_window": {
-            "enabled": True,
-            "label": "Foreground Window",
-            "pause": "comma",
-            "position": "before",
-        },
-        "push_button": {
-            "enabled": True,
-            "label": "Push button",
-            "pause": "comma",
-            "position": "before",
-        },
-        "edit": {
-            "enabled": True,
-            "label": "Edit box",
-            "pause": "none",
-            "position": "none",
-        },
+    "elements": {},
+}
+
+LEGACY_DEFAULT_ELEMENTS: Dict[str, Dict[str, Any]] = {
+    "foreground_window": {
+        "enabled": True,
+        "label": "Foreground Window",
+        "pause": "comma",
+        "position": "before",
+    },
+    "push_button": {
+        "enabled": True,
+        "label": "Push button",
+        "pause": "comma",
+        "position": "before",
+    },
+    "edit": {
+        "enabled": True,
+        "label": "Edit box",
+        "pause": "none",
+        "position": "none",
     },
 }
 
@@ -65,6 +67,9 @@ def load_config(path: Optional[Path] = None) -> Dict[str, Any]:
     merged = deepcopy(DEFAULT_CONFIG)
     if isinstance(raw, dict):
         merged.update(raw)
+        if raw.get("elements") == LEGACY_DEFAULT_ELEMENTS:
+            merged["elements"] = {}
+            return merged
         for element_id, element_config in raw.get("elements", {}).items():
             if not isinstance(element_config, dict):
                 continue
